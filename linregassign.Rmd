@@ -1,0 +1,139 @@
+---
+title: "HOTe_3"
+author: "Kumari Surya Remanan"
+date: "9/18/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+rm(list = ls(all=TRUE))
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+setwd("~/Desktop/assignments/2268_kumarisuryaremanan_HOTe3")
+df<-read.csv('CustomerData.csv')
+head(df)
+```
+```{r}
+summary(df)
+```
+#total revenue generated is the target variable
+```{r}
+any(is.na(df))
+```
+```{r}
+df <- subset(df, select = -CustomerID )
+
+```
+```{r}
+#Converting data into factor
+df$City=as.factor(df$City) 
+str(df)
+```
+
+```{r}
+#Central Imputation of the dataset
+library(DMwR)
+Imp_data=centralImputation(df) 
+```
+
+
+#There are no null values
+```{r}
+str(df)
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+```
+#Correlation and corr plots
+
+```{r}
+# Grab only numeric columns
+num.cols <- sapply(df, is.numeric)
+
+# Filter to numeric columns for correlation
+cor.data <- cor(df[,num.cols])
+
+cor.data
+```
+```{r}
+library(corrplot)
+library(corrgram)
+```
+
+```{r fig.height= 8, fig.width = 9}
+corrplot(cor.data,method='color')
+```
+```{r fig.height= 8, fig.width = 9}
+corrgram(df,order=TRUE, lower.panel=panel.shade,
+  upper.panel=panel.pie, text.panel=panel.txt)
+```
+#scatter plots
+```{r fig.height= 8, fig.width = 9}
+pairs(~NoOfChildren+MinAgeOfChild+MaxAgeOfChild+Tenure+FrquncyOfPurchase+NoOfUnitsPurchased+NoOfGamesPlayed+NoOfGamesBought+TotalRevenueGenerated,data=df,main="Scatterplot matrix with selected attributes")
+```
+
+
+
+
+
+```{r}
+#Splitting the data intpo Train and Test data 
+## 75% of the sample size
+smp_size <- floor(0.75 * nrow(df))
+set.seed(123)
+Imp_train <- sample(seq_len(nrow(df)), size = smp_size) #setting  the sample size
+#Creating the train / Test data
+train_data <- Imp_data[Imp_train, ] 
+test_data <- Imp_data[-Imp_train, ]
+```
+
+
+```{r}
+library(caret)
+
+# The "preProcess()" function creates a model object required for standardizing unseen data
+
+# Do not standardize the target variable
+
+std_model <- preProcess(train_data[, !names(train_data) %in% c("MV")], method = c("center","scale"))
+std_model
+# The predict() function is used to standardize any other unseen data
+
+train_data[, !names(train_data) %in% c("MV")] <- predict(object = std_model, newdata = train_data[, !names(train_data) %in% c("MV")])
+
+test_data[, !names(train_data) %in% c("MV")] <- predict(object = std_model, newdata = test_data[, !names(train_data) %in% c("MV")])
+
+```
+```{r fig.height= 8, fig.width = 9}
+#Linear Regression Model
+model_basic <- lm(formula = TotalRevenueGenerated~. , data = train_data)
+summary(model_basic)
+# residual plots 
+library(DMwR)
+par(mfrow = c(2,2))
+plot(model_basic)
+# Error metrics evaluation on train data and test data
+preds_model <- predict(model_basic,test_data[, !(names(test_data) %in% c("TotalRevenueGenerated"))])
+preds_model
+regr.eval(train_data$TotalRevenueGenerated, model_basic$fitted.values) #On Train data
+regr.eval(test_data$TotalRevenueGenerated,preds_model) #On Test data
+
+
+```
+
+
+
+
+
+
+
+
